@@ -47,30 +47,9 @@ myTheme <- {theme(panel.background = element_rect(fill = NA, color = "black"),
                                              margin = margin(r = 7))
 )}
 TrtCol <- c("dodgerblue3", "brown3")
-
-## Mark Dead Rhizomes
-
-ripID <- read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/updatedDeadPlants.csv",
-                  comment.char = "#") %>% 
-  mutate(LiveDead = factor(LiveDead, levels = c("alive", "Dead")))
-
-## Bring Initial weights
-IniWeights <- read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/SourceSinkIII_df.csv",
-                  comment.char = "#") %>% 
-  dplyr::rename(IniWeight_g = FreshWeight_g)
-IniWeights %>% head
-
-
-PlantingDate.df <-IniWeights %>% 
-  filter(!(Sampling %in% c("0-Day", "7-Day", "14-Day"))) %>% 
-  mutate(SamplingDate = "2021-03-17" %>% as.Date,
-         RhiSample_g = IniWeight_g,
-         ) %>%   select(-RhiID.1, -IniWeight_g, -(Treatment:GreenhouseOrder))
-
-# plyr::rbind.fill(PlantingDate.df, rhiBM)
-
 ## Load compiled Data
-Allvar.df <- read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/SSIII_AllVariablesHarvests.csv") %>% 
+Allvar.df <- read.csv("./SSIII_dryad.csv") %>% 
+  ## ^Download dataset from dryad 
   mutate(Phase = ifelse(HarvestDate >= "2021-04-25", "Growth", "Storage" ),
          HarvestDate = HarvestDate %>% as.Date,
          FieldRhiHarvest = "2021-01-13" %>% as.Date,
@@ -104,24 +83,6 @@ for(i in c("AboveGround_g", "RhiSample_g", "Root_g", "Starch_Rhi")) {Allvar.df[,
 ###                   ###
 
 ## ---- I. Rhizome Respiration ----
-RhiResp <- 
-  read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/SinkActivity/SSIII_Storage_RhizomeRespiration.csv")%>% 
-  mutate(FieldRhiHarvest = "2021-01-13" %>% as.Date,
-         ExperimentStart = "2021-03-03" %>% as.Date,
-         PlantedRhi = "2021-03-17" %>% as.Date,
-         Phase = factor("Storage", levels = c("Storage", "Growing")),
-         SamplingDate = as.Date(SamplingDate),
-         Treatment = as.factor(Treatment)) %>% 
-  select(FieldRhiHarvest, ExperimentStart, PlantedRhi, Phase, SamplingDate, Treatment, rhiID, RhiMass_g, RhiResp_nmol.g.min, RhiResp_ug.g.min, Tair) %>%   
-  mutate(DoStorage = SamplingDate - ExperimentStart,
-         Days = (SamplingDate - PlantedRhi) %>% as.numeric) %>% 
-  
-  filter(RhiResp_ug.g.min < 7.5 &
-           !(Treatment == "Cold" & Days > -1))
-
-# Look into //es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/SSIII_Carbs_StoragePhase.R
-# for the anlaysis
-
 
 ### ___ i) Model fitting ----
 
@@ -864,29 +825,6 @@ LeafArea.df <- Allvar.df %>%
   filter(!(is.na(Leaf.Area_cm2))) %>% 
   select(RhiID, Treatment, Sampling, HarvestDate, Days, Caputd, Phase, Leaf.Area_cm2)
 
-
-### ___ i) nonlinear fit ----
-# 
-# LeafArea_null <- gnls(Leaf.Area_cm2 ~ Asym/(1+exp((xmid-Days)/scal)),
-#                    # params = list(Asym + scal + xmid ~ Treatment),
-#                    data = LeafArea.df %>% filter(Caputd == "alive") ,
-#                    start = list(Asym = rep(10, 1), xmid = rep(100, 1), scal = rep(20, 1)))
-# 
-# LeafArea_full <- gnls(Leaf.Area_cm2 ~ Asym/(1+exp((xmid-Days)/scal)),
-#                    params = list(Asym  + xmid + scal ~ Treatment),
-#                    data = LeafArea.df %>% filter(Caputd == "alive") ,
-#                    start = list(Asym = rep(10, 2), xmid = rep(80, 2), scal = rep(20, 2)))
-# anova(LeafArea_full)
-# anova(LeafArea_null, LeafArea_full)
-# 
-# LeafArea_full %>% plot
-# 
-# LeafArea_full %>% emmeans(param = "xmid", specs = ~Treatment) %>% pwpm()
-# LeafArea_full %>% emmeans(param = "scal", specs = ~Treatment) %>% pwpm()
-# LeafArea_full %>% emmeans(param = "Asym", specs = ~Treatment) %>% multcomp::cld(Letters = letters, reversed = TRUE)
-# LeafArea_full %>% emmeans(param = "xmid", specs = ~Treatment) %>% multcomp::cld(Letters = letters, reversed = TRUE)
-# LeafArea_full %>% emmeans(param = "scal", specs = ~Treatment) %>% multcomp::cld(Letters = letters, reversed = TRUE)
-
 ### ___ ii) Plot ----
 LeafArea.lm <- LeafArea.df %>% filter(Caputd == "alive") %>% 
   lm(Leaf.Area_cm2 ~ Treatment*factor(Days), data = .)
@@ -1096,8 +1034,9 @@ source2 <- function(file, start, end, ...) {
   source(textConnection(file.lines.collapsed), ...)
 }
 
-source2("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/Development/SourceSinkIII_DevelopmentCompilation.R",
-        start = 40, end = 95)
+#source2("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/Development/SourceSinkIII_DevelopmentCompilation.R",
+#        start = 40, end = 95)
+          ## ^ This information should be already in the Dryad file
 
 captdRhiID <- Allvar.df %>% filter(Caputd != "alive") %>% .$RhiID %>% unique
 Development$Caputd <- "alive"
@@ -1274,9 +1213,10 @@ Leaf.plt <- Leaf.emm %>% as.data.frame() %>%
   myTheme + theme(legend.position = c(.9, .1))
 
 ## ---- VI. Leaf/Tiller ----
-Leaf.Flower.df <- read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/Development/SSIII_DevelopmentCompilation.csv") %>% 
-  mutate(Days = (as.Date(SamplingDate) - as.Date(PlantedRhi)) %>%  as.numeric ) %>% 
-  filter(!is.na(totLeaves))
+#Leaf.Flower.df <- read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/Development/SSIII_DevelopmentCompilation.csv") %>% 
+#  mutate(Days = (as.Date(SamplingDate) - as.Date(PlantedRhi)) %>%  as.numeric ) %>% 
+#  filter(!is.na(totLeaves))
+      ## ^ This information is in the dryad dataset
 
 captdRhiID <- Allvar.df %>% filter(Caputd != "alive") %>% .$RhiID %>% unique
 Leaf.Flower.df$Caputd <- "alive"
@@ -1382,18 +1322,18 @@ wi.trt.lttr <- LeafTill.lm %>% emmeans(~Days|Treatment) %>%
 ###                           ###
 
 ## ---- I. Net CO2 Assimilation ----
-Photos.df <- read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/SourceActivity/SSIII_SurveyCompilation.csv") %>% 
-  mutate(Phase = "Growth",
-         SamplingDate = as.Date(SamplingDate),
-         FieldRhiHarvest = "2021-01-13" %>% as.Date,
-         ExperimentStart = "2021-03-03" %>% as.Date,
-         PlantedRhi = "2021-03-17" %>% as.Date,
-         Days = (SamplingDate - ExperimentStart) %>% as.numeric
-  ) %>%  
-  dplyr::rename(RhiID = PotNumber,
-                Treatment = Storage) %>% 
-  
-  select(RhiID, Treatment, SamplingDate, Days, Phase, A, PhiPS2, gsw) 
+#Photos.df <- read.csv("//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/SourceActivity/SSIII_SurveyCompilation.csv") %>% 
+#  mutate(Phase = "Growth",
+#         SamplingDate = as.Date(SamplingDate),
+#         FieldRhiHarvest = "2021-01-13" %>% as.Date,
+#         ExperimentStart = "2021-03-03" %>% as.Date,
+#         PlantedRhi = "2021-03-17" %>% as.Date,
+#         Days = (SamplingDate - ExperimentStart) %>% as.numeric
+#  ) %>%  
+#  dplyr::rename(RhiID = PotNumber,
+#                Treatment = Storage) %>% 
+#  select(RhiID, Treatment, SamplingDate, Days, Phase, A, PhiPS2, gsw) 
+         ## ^ This data is in the dryad dataset. 
 
 ### ___ i) Model fitting ----
 
@@ -2277,153 +2217,5 @@ diff.ch_AllRates.lng.df %>%
   scale_y_continuous(name = "Room - Cold", expand = c(0,0), ) +
   
   myTheme
-
-##
-## ---- VII Create powerpoint with all figures and tables ----
-##
-require(officer)
-require(rvg)
-
-## New/Modified figures after revisions
-
-## New Fig 1
-topRow <- cowplot::plot_grid(Rrhi_plt, endStorage.starch.plt + scale_y_continuous(name = NULL),
-                            ncol = 2, align = "hv", labels = "AUTO", rel_widths = c(7, 5))
-
-bottRow <- cowplot::plot_grid(AboveBM.plt, belowBM.plt, 
-                              ncol = 2, align = "hv", labels = c('B', 'C'))
-cowplot::plot_grid(topRow, AboveBM.plt, belowBM.plt, ncol = 1, rel_heights = c(2.5, 3, 3), labels = c('A', 'C', 'D'))
-
-Fig1new <- cowplot::plot_grid(topRow, AboveBM.plt, belowBM.plt, 
-                              ncol = 1, rel_heights = c(2.5, 3, 3), labels = c('A', 'C', 'D'))
-
-
-read_pptx() %>% 
-  # ## Fig 1
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = Fig1new),
-          location = ph_location(width = 5, height = 7)) %>% 
-  # print(target = "//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/RhiDepletion_FirstFigure.pptx")
-  print(target = "C:/Users/tejerani/Desktop/RhiDepletion_Fig1new.pptx")
-
-  ## New fig S5
-FigS5_new <- cowplot::plot_grid(starchRhi.plt + scale_x_continuous(name = NULL, labels = NULL),
-                                sucroseRhi.plt + scale_x_continuous(name = NULL, labels = NULL),  
-                                glucoseRhi.plt, ncol = 1,
-                                align = "hv", labels = "AUTO")
-## New addition: fig S6
-co2vStarch.plt
-
-read_pptx() %>% 
-  # ## Fig S5
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = FigS1_new),
-          location = ph_location(width = 3, height = 7.5)) %>% 
-  
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = FigS5_new),
-          location = ph_location(width = 3, height = 7.5)) %>% 
-
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = co2vStarch.plt),
-          location = ph_location(width = 3.5, height = 3.5)) %>% 
-
-    print(target = "C:/Users/tejerani/Desktop/RhiDepletion_FigS1&S5new.pptx")
-
-## First figures
-read_pptx() %>% 
-  
-  ## Aboveground 
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj =  Rrhi_plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  ## Aboveground 
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = Storage.starchRhi.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  ## Aboveground 
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = AboveBM.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  ## Belowground
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = belowBM.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  ## Fig3
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = rhiBM.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig4
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = rootBM.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig5
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = Tillers.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = Leaf.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = LeafArea.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = LeafTill.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = starchRhi.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = starchRhi_g.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = A_plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
- 
-   ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = gsw.plt),
-          location = ph_location(width = 4.5, height = 3)) %>%   
-
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = PhiPS2.plt),
-          location = ph_location(width = 4.5, height = 3)) %>% 
-
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = Rates.plt),
-          location = ph_location(width = 4.5, height = 6.5)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = lineAllRates.plt),
-          location = ph_location(width = 4.5, height = 5)) %>% 
-  
-  # ## Fig6
-  add_slide("Blank", "Office Theme") %>%
-  ph_with(dml(ggobj = stackedRates.plt),
-          location = ph_location(width = 4.5, height = 5)) %>% 
-  # print(target = "//es.msu.edu/prl/labs/walker/General Project Storage/Mauri TN/Data&Analyses/swgSourceSink/Experiment III/RhiDepletion_FirstFigure.pptx")
-print(target = "C:/Users/mauri/Desktop/RhiDepletion_FirstFigure.pptx")
-
 
   
